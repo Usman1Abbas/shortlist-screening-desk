@@ -3,8 +3,10 @@ import { createScreeningAgent } from "@/lib/agent";
 import { addMessage, listMessages } from "@/lib/store";
 
 export const runtime = "nodejs";
-// Screening a batch of resumes runs well past the default serverless window.
-export const maxDuration = 800;
+// Screening a batch runs past the default serverless window. 300s is the ceiling
+// on Vercel's Hobby plan (Pro allows up to 800). A single sequential screen fits
+// comfortably; very large batches on Hobby may need to be split across requests.
+export const maxDuration = 300;
 
 type Event =
   | { type: "text"; value: string }
