@@ -1,0 +1,140 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-archivo);
+  --font-serif: var(--font-newsreader);
+  --font-mono: ui-monospace, SFMono-Regular, monospace;
+  --font-heading: var(--font-newsreader);
+
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-paper-raised: var(--paper-raised);
+  --color-strong: var(--verdict-strong);
+  --color-maybe: var(--verdict-maybe);
+  --color-reject: var(--verdict-no);
+
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+  Warm paper. Neutrals are tinted toward the ink hue (~62-86) so nothing on the
+  page is a true grey — the surface should read as stock, not as #fff.
+*/
+:root {
+  --background: oklch(0.972 0.008 84);
+  --paper-raised: oklch(0.987 0.005 86);
+  --foreground: oklch(0.243 0.014 62);
+
+  --card: oklch(0.987 0.005 86);
+  --card-foreground: oklch(0.243 0.014 62);
+  --popover: oklch(0.987 0.005 86);
+  --popover-foreground: oklch(0.243 0.014 62);
+
+  /* Oxblood — the one accent. Primary actions and the masthead mark. */
+  --primary: oklch(0.372 0.106 27);
+  --primary-foreground: oklch(0.977 0.008 84);
+
+  --secondary: oklch(0.941 0.011 82);
+  --secondary-foreground: oklch(0.303 0.015 62);
+  --muted: oklch(0.944 0.01 82);
+  --muted-foreground: oklch(0.514 0.015 68);
+  --accent: oklch(0.932 0.016 78);
+  --accent-foreground: oklch(0.303 0.015 62);
+
+  --destructive: oklch(0.505 0.153 27);
+
+  --rule: oklch(0.884 0.012 78);
+  --rule-strong: oklch(0.784 0.015 74);
+  --border: oklch(0.884 0.012 78);
+  --input: oklch(0.862 0.013 78);
+  --ring: oklch(0.372 0.106 27);
+
+  /* Verdicts. Ink-like rather than traffic-light — these sit beside body copy. */
+  --verdict-strong: oklch(0.436 0.084 152);
+  --verdict-maybe: oklch(0.527 0.096 68);
+  --verdict-no: oklch(0.494 0.055 32);
+
+  --radius: 0.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "kern" 1, "liga" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html {
+    @apply font-sans;
+  }
+
+  /* Scores sit in columns; they must not shimmy as they update. */
+  .tnum {
+    font-variant-numeric: tabular-nums lining-nums;
+  }
+}
+
+@utility label {
+  @apply font-sans text-[0.6875rem] font-medium uppercase tracking-[0.14em] text-muted-foreground;
+}
+
+/* One orchestrated reveal for the pipeline, not a micro-interaction per row. */
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.settle {
+  animation: settle 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settle {
+    animation: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
