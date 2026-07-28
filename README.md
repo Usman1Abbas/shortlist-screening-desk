@@ -6,7 +6,7 @@ résumé*, then screens a batch of résumés against that same rubric — produc
 evidence-backed scorecard, risk flags phrased as questions to ask on a screen, a
 ranked shortlist, and a personalised outreach draft for the strong candidates.
 
-> **Live demo:** _add your Vercel URL here_
+> **Live demo:** https://shortlist-screening-desk.vercel.app
 >
 > **Repo:** https://github.com/Usman1Abbas/shortlist-screening-desk
 
