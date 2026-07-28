@@ -19,6 +19,7 @@ const TOOL_COPY: Record<string, string> = {
   save_profile: "Extracting the facts",
   save_score: "Scoring against the rubric",
   save_outreach: "Drafting outreach",
+  save_rejection: "Drafting a rejection",
   // deepagents delegates through a single built-in `task` tool.
   task: "Screening a candidate",
   write_todos: "Planning the work",
@@ -28,6 +29,7 @@ const OPENERS = [
   "Build the rubric for this role.",
   "Screen everyone and give me the shortlist.",
   "Draft outreach for the strong candidates.",
+  "Draft rejection notes for the ones we're passing on.",
 ];
 
 export function AgentChat({

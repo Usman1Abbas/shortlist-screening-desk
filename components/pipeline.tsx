@@ -97,8 +97,10 @@ export function Pipeline({
                   ) : (
                     <span className="label">Unscreened</span>
                   )}
-                  {c.outreach && (
-                    <p className="mt-1.5 label !text-[0.625rem]">Drafted</p>
+                  {(c.outreach || c.rejection) && (
+                    <p className="mt-1.5 label !text-[0.625rem]">
+                      {c.outreach ? "Outreach" : "Rejection"} drafted
+                    </p>
                   )}
                 </div>
               </button>
@@ -131,7 +133,7 @@ function CandidateDossier({
   candidate: Candidate;
   rubric: Rubric | null;
 }) {
-  const { profile, score, outreach } = candidate;
+  const { profile, score, outreach, rejection } = candidate;
   const criterionName = (id: string) =>
     rubric?.criteria.find((c) => c.id === id)?.name ?? id;
   const criterionWeight = (id: string) =>
@@ -244,6 +246,26 @@ function CandidateDossier({
               <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
                 <span className="label">Hooks into</span>{" "}
                 {outreach.personalizationNotes}
+              </p>
+            </section>
+          )}
+
+          {rejection && (
+            <section>
+              <h3 className="label border-b border-rule pb-2">
+                Rejection draft
+              </h3>
+              <div className="mt-3 bg-paper-raised p-5">
+                <p className="font-serif text-lg leading-snug">
+                  {rejection.subject}
+                </p>
+                <p className="mt-3 text-sm leading-relaxed whitespace-pre-wrap">
+                  {rejection.body}
+                </p>
+              </div>
+              <p className="mt-2.5 text-sm leading-relaxed text-muted-foreground">
+                <span className="label">Acknowledges</span>{" "}
+                {rejection.acknowledges}
               </p>
             </section>
           )}

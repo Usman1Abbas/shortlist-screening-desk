@@ -42,8 +42,15 @@ evidence-cited shortlist.**
    risk flags written as questions a recruiter can ask on the phone screen.
 4. **Drafts outreach** — for strong candidates, hooked to something specific in
    their actual résumé, under 150 words.
-5. **Ingests résumés two ways** — paste them, or **upload PDFs / an entire
+5. **Drafts respectful rejections** — for candidates being passed on: warm and
+   reason-light (acknowledges a genuine strength, no critique of gaps), which is
+   both kinder and lower-risk than an explained rejection.
+6. **Ingests résumés two ways** — paste them, or **upload PDFs / an entire
    folder** (text is extracted in the browser).
+
+After a batch is screened the desk proactively *offers* these next actions —
+outreach for the strong, rejections for the rest — but leaves the call to the
+recruiter. All drafts are reviewed and sent by a human; nothing is auto-sent.
 
 Every score on screen is one click from the résumé evidence behind it.
 
@@ -87,7 +94,8 @@ pipeline. Every write also re-checks that the candidate belongs to the role.
 | `read_candidate` | subagent | Read one résumé's full text |
 | `save_profile` | subagent | Write structured facts from a résumé |
 | `save_score` | subagent | Write a scorecard — **rejected** if it skips any rubric criterion |
-| `save_outreach` | supervisor | Save a personalised outreach draft |
+| `save_outreach` | supervisor | Save a personalised outreach draft (strong candidates) |
+| `save_rejection` | supervisor | Save a warm, reason-light rejection draft (passed-over candidates) |
 
 ### 3. Delegation (`lib/agent/index.ts`)
 
@@ -172,7 +180,7 @@ create table if not exists candidates (
   id uuid primary key default gen_random_uuid(),
   role_id uuid not null references roles(id) on delete cascade,
   label text not null, raw_resume text not null,
-  profile jsonb, score jsonb, outreach jsonb,
+  profile jsonb, score jsonb, outreach jsonb, rejection jsonb,
   created_at timestamptz not null default now()
 );
 create table if not exists messages (

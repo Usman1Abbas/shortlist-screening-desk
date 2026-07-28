@@ -4,6 +4,7 @@ import type {
   ChatMessage,
   Outreach,
   Profile,
+  Rejection,
   Role,
   Rubric,
   Score,
@@ -31,6 +32,7 @@ type CandidateRow = {
   profile: Profile | null;
   score: Score | null;
   outreach: Outreach | null;
+  rejection: Rejection | null;
   created_at: string;
 };
 
@@ -62,6 +64,7 @@ function toCandidate(c: CandidateRow): Candidate {
     profile: c.profile,
     score: c.score,
     outreach: c.outreach,
+    rejection: c.rejection,
     createdAt: c.created_at,
   };
 }
@@ -166,6 +169,7 @@ export async function addCandidates(
         profile: null,
         score: null,
         outreach: null,
+        rejection: null,
       })),
     )
     .select();
@@ -175,7 +179,9 @@ export async function addCandidates(
 
 async function patchCandidate(
   id: string,
-  patch: Partial<Pick<CandidateRow, "profile" | "score" | "outreach">>,
+  patch: Partial<
+    Pick<CandidateRow, "profile" | "score" | "outreach" | "rejection">
+  >,
 ): Promise<Candidate> {
   const { data, error } = await db()
     .from("candidates")
@@ -197,6 +203,10 @@ export function saveScore(id: string, score: Score) {
 
 export function saveOutreach(id: string, outreach: Outreach) {
   return patchCandidate(id, { outreach });
+}
+
+export function saveRejection(id: string, rejection: Rejection) {
+  return patchCandidate(id, { rejection });
 }
 
 export async function listMessages(roleId: string): Promise<ChatMessage[]> {

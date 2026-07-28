@@ -109,6 +109,7 @@ export function buildTools(roleId: string) {
           verdict: c.score?.verdict ?? null,
           risks: c.score?.risks ?? [],
           hasOutreach: c.outreach !== null,
+          hasRejection: c.rejection !== null,
         })),
       );
     },
@@ -226,6 +227,38 @@ export function buildTools(roleId: string) {
     },
   );
 
+  const saveRejection = tool(
+    async ({ candidateId, ...rejection }) => {
+      const candidate = await ownedCandidate(candidateId);
+      if (!candidate) return NOT_OURS;
+      // Can't write a rejection for someone who was never screened — that is
+      // almost always the model rejecting the wrong candidate.
+      if (!candidate.score) {
+        return JSON.stringify({
+          error:
+            "This candidate has not been screened yet. Screen them before drafting a rejection.",
+        });
+      }
+      await store.saveRejection(candidateId, rejection);
+      return JSON.stringify({ ok: true, subject: rejection.subject });
+    },
+    {
+      name: "save_rejection",
+      description:
+        "Save a warm, reason-light rejection note for one candidate the recruiter is passing on. Acknowledge one genuine strength, decline kindly, and give no critique of their gaps. Under 120 words.",
+      schema: z.object({
+        candidateId: z.string(),
+        subject: z.string(),
+        body: z.string(),
+        acknowledges: z
+          .string()
+          .describe(
+            "The genuine strength from their resume this note acknowledges, so it can be checked.",
+          ),
+      }),
+    },
+  );
+
   return {
     all: [
       getRole,
@@ -235,6 +268,7 @@ export function buildTools(roleId: string) {
       saveProfile,
       saveScore,
       saveOutreach,
+      saveRejection,
     ],
     // The screening subagent gets a deliberately narrow surface: it can read
     // the rubric and one resume, and write that candidate's profile and score.

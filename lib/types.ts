@@ -56,6 +56,13 @@ export type Outreach = {
   personalizationNotes: string;
 };
 
+export type Rejection = {
+  subject: string;
+  body: string;
+  /** The genuine strength this note acknowledges, so a recruiter can sanity-check it. */
+  acknowledges: string;
+};
+
 export type Candidate = {
   id: string;
   roleId: string;
@@ -65,6 +72,7 @@ export type Candidate = {
   profile: Profile | null;
   score: Score | null;
   outreach: Outreach | null;
+  rejection: Rejection | null;
   createdAt: string;
 };
 
