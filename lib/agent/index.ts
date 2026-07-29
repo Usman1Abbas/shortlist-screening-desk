@@ -14,6 +14,19 @@ export function createScreeningAgent(roleId: string) {
   // maxRetries backs off on any 429 that still slips through.
   const model = new ThrottledChatOpenAI({
     model: "nvidia/nemotron-3-super-120b-a12b:free",
+    // Free OpenRouter endpoints are individually capacity-limited and return
+    // saturation errors under load. Passing a `models` fallback chain across
+    // different providers makes OpenRouter try the next when one is unavailable
+    // — several flaky free models combine into a reliable setup, at zero cost.
+    // OpenRouter caps the fallback array at 3; spread across providers so one
+    // provider's saturation doesn't take the whole run down.
+    modelKwargs: {
+      models: [
+        "nvidia/nemotron-3-super-120b-a12b:free",
+        "google/gemma-4-31b-it:free",
+        "cohere/north-mini-code:free",
+      ],
+    },
     apiKey: process.env.OPENROUTER_API_KEY,
     configuration: {
       baseURL: "https://openrouter.ai/api/v1",
