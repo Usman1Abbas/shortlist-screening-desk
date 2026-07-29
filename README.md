@@ -176,9 +176,6 @@ Design intent and tone are documented in [`.impeccable.md`](.impeccable.md).
 
 ---
 
-## ⏱️ Time spent
-
-_~[fill in] hours over a weekend._
 
 ---
 
