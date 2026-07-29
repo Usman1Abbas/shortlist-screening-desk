@@ -63,7 +63,7 @@ subagent** that handles one candidate at a time.
   deliberately **narrow tool surface**; one delegation per candidate keeps résumé twelve as
   well-read as résumé one, instead of the supervisor compressing later candidates into vibes.
 - **Guardrails** — tools are **built per request and closed over the role**, so a score can't
-  land on the wrong pipeline; `save_score` **rejects a partial scorecard** rather than
+  land on the wrong pipeline; `save_screening` **rejects a partial scorecard** rather than
   persisting an unreadable overall number.
 
 ---
@@ -91,12 +91,12 @@ if the client disconnects.
 
 | Tool | Surface | What it does |
 |---|---|---|
-| `get_role` | supervisor + subagent | Read the JD, current rubric, and candidate roster |
+| `get_role` | supervisor | Read the JD, current rubric, and candidate roster |
+| `get_rubric` | subagent | Read the rubric — must-haves, weighted criteria, calibration (the JD, distilled; no full JD or roster) |
 | `save_rubric` | supervisor | Create/replace the weighted rubric |
 | `list_candidates` | supervisor | Read the whole ranked pipeline |
-| `read_candidate` | subagent | Read one résumé's full text |
-| `save_profile` | subagent | Write structured facts from a résumé |
-| `save_score` | subagent | Write a scorecard — **rejected if it skips any rubric criterion** |
+| `read_candidate` | supervisor + subagent | Read one résumé's full text |
+| `save_screening` | subagent | Write the profile and scorecard together — **rejected if it skips any rubric criterion** |
 | `save_outreach` | supervisor | Save a personalised outreach draft (strong candidates) |
 | `save_rejection` | supervisor | Save a warm, reason-light rejection draft (passed-over candidates) |
 
