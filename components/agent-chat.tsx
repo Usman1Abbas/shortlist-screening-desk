@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import type { ChatMessage } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Markdown } from "@/components/markdown";
 import { cn } from "@/lib/utils";
 
 type Turn = { role: "user" | "assistant"; content: string };
@@ -158,15 +159,13 @@ export function AgentChat({
             <p className="label mb-1.5">
               {turn.role === "user" ? "You" : "Desk"}
             </p>
-            <div
-              className={cn(
-                "text-sm leading-relaxed whitespace-pre-wrap",
-                turn.role === "user" &&
-                  "border-l-2 border-rule-strong pl-3 text-muted-foreground",
-              )}
-            >
-              {turn.content}
-            </div>
+            {turn.role === "user" ? (
+              <div className="border-l-2 border-rule-strong pl-3 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                {turn.content}
+              </div>
+            ) : (
+              <Markdown>{turn.content}</Markdown>
+            )}
           </div>
         ))}
 
@@ -194,9 +193,7 @@ export function AgentChat({
               </ul>
             )}
             {streaming ? (
-              <div className="text-sm leading-relaxed whitespace-pre-wrap">
-                {streaming}
-              </div>
+              <Markdown>{streaming}</Markdown>
             ) : (
               activity.length === 0 && (
                 <p className="text-sm text-muted-foreground">Reading…</p>
