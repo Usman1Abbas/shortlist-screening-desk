@@ -23,16 +23,18 @@ export async function POST(req: Request) {
   if (!roleId || !message?.trim()) {
     return Response.json({ error: "roleId and message are required." }, { status: 400 });
   }
-  // The agent runs on Gemini by default (or OpenRouter with AGENT_PROVIDER).
-  const needsOpenRouter = process.env.AGENT_PROVIDER === "openrouter";
-  const key = needsOpenRouter ? process.env.OPENROUTER_API_KEY : process.env.GEMINI_API_KEY;
-  if (!key) {
+  // The agent runs on Kimi (Moonshot) by default; AGENT_PROVIDER=openrouter|gemini
+  // flips to a fallback. Check the matching key is present before starting a run.
+  const provider = process.env.AGENT_PROVIDER ?? "kimi";
+  const keyEnvName =
+    provider === "openrouter"
+      ? "OPENROUTER_API_KEY"
+      : provider === "gemini"
+        ? "GEMINI_API_KEY"
+        : "MOONSHOT_API_KEY";
+  if (!process.env[keyEnvName]) {
     return Response.json(
-      {
-        error: needsOpenRouter
-          ? "OPENROUTER_API_KEY is not set. Add it to .env.local and restart."
-          : "GEMINI_API_KEY is not set. Add it to .env.local and restart.",
-      },
+      { error: `${keyEnvName} is not set. Add it to .env.local and restart.` },
       { status: 500 },
     );
   }

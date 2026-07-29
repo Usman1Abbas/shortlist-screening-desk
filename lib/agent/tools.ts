@@ -34,7 +34,13 @@ export function buildTools(roleId: string) {
   // still comes from the model — so every write checks the candidate actually
   // belongs to this role before touching it. Without this, one hallucinated or
   // copy-pasted uuid overwrites a candidate on someone else's pipeline.
+  // Postgres treats a malformed uuid as an error, not a miss, so a hallucinated
+  // slug id (e.g. "amara-okafor") would throw and crash the run. Screen the
+  // format first so any bad id becomes the correctable NOT_OURS reply below,
+  // the same as a valid-but-wrong uuid.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   async function ownedCandidate(candidateId: string) {
+    if (!UUID_RE.test(candidateId)) return null;
     const candidate = await store.getCandidate(candidateId);
     return candidate && candidate.roleId === roleId ? candidate : null;
   }
@@ -67,6 +73,29 @@ export function buildTools(roleId: string) {
       name: "get_role",
       description:
         "Read the job description, the current rubric (null if not built yet), and the roster of candidates with their ids and whether they have been screened. Call this first.",
+      schema: z.object({}),
+    },
+  );
+
+  // A lean read for the screener subagent: the rubric distils the JD, so the
+  // screener scores against it and never needs the full job-description text or
+  // the candidate roster that get_role carries. Dropping both keeps the résumé
+  // context small and stops re-sending the JD once per candidate ×N.
+  const getRubric = tool(
+    async () => {
+      const role = await store.getRole(roleId);
+      if (!role) return JSON.stringify({ error: "Role not found." });
+      return JSON.stringify({
+        title: role.title,
+        company: role.company,
+        rubric: role.rubric,
+        rubricExists: role.rubric !== null,
+      });
+    },
+    {
+      name: "get_rubric",
+      description:
+        "Read the scoring rubric — must-haves, weighted criteria, and the calibration note. The rubric already distils the job description, so score against it; you do not need the raw JD. Call this first.",
       schema: z.object({}),
     },
   );
@@ -139,22 +168,11 @@ export function buildTools(roleId: string) {
     },
   );
 
-  const saveProfile = tool(
-    async ({ candidateId, ...profile }) => {
-      if (!(await ownedCandidate(candidateId))) return NOT_OURS;
-      await store.saveProfile(candidateId, profile);
-      return JSON.stringify({ ok: true, name: profile.name });
-    },
-    {
-      name: "save_profile",
-      description:
-        "Write the structured facts extracted from a resume. Call this before save_score.",
-      schema: profileSchema.extend({ candidateId: z.string() }),
-    },
-  );
-
-  const saveScore = tool(
-    async ({ candidateId, ...score }) => {
+  // One write for both the profile and the scorecard. The screener produces
+  // them together, so combining them saves a model round-trip per candidate
+  // (and a DB write) versus the old save_profile-then-save_score two-step.
+  const saveScreening = tool(
+    async ({ candidateId, profile, score }) => {
       if (!(await ownedCandidate(candidateId))) return NOT_OURS;
       const role = await store.getRole(roleId);
       const expected = role?.rubric?.criteria.map((c) => c.id) ?? [];
@@ -167,41 +185,45 @@ export function buildTools(roleId: string) {
           error: `Breakdown is missing criteria: ${missing.join(", ")}. Score every criterion in the rubric, including ones the candidate is weak on.`,
         });
       }
-      await store.saveScore(candidateId, score);
+      await store.saveScreening(candidateId, profile, score);
       return JSON.stringify({
         ok: true,
+        name: profile.name,
         overall: score.overall,
         verdict: score.verdict,
       });
     },
     {
-      name: "save_score",
+      name: "save_screening",
       description:
-        "Write a candidate's scorecard. The breakdown must contain one entry per rubric criterion — the call is rejected otherwise.",
+        "Write the candidate's structured profile and scorecard together, in one call. The breakdown must contain one entry per rubric criterion — the call is rejected otherwise.",
       schema: z.object({
         candidateId: z.string(),
-        overall: z.number().min(0).max(100).describe("Weighted 0-100."),
-        verdict: z.enum(["strong", "maybe", "no"]),
-        breakdown: z.array(
-          z.object({
-            criterionId: z.string().describe("Must match a rubric criterion id."),
-            score: z.number().min(0).max(10),
-            evidence: z
-              .string()
-              .describe(
-                "Quote or close paraphrase from the resume. Use 'no evidence in resume' when there is nothing to cite.",
-              ),
-          }),
-        ),
-        risks: z.array(
-          z.object({
-            severity: z.enum(["low", "medium", "high"]),
-            note: z
-              .string()
-              .describe("Phrased as something the recruiter can ask on the screen."),
-          }),
-        ),
-        rationale: z.string().describe("Two or three sentences for the recruiter."),
+        profile: profileSchema,
+        score: z.object({
+          overall: z.number().min(0).max(100).describe("Weighted 0-100."),
+          verdict: z.enum(["strong", "maybe", "no"]),
+          breakdown: z.array(
+            z.object({
+              criterionId: z.string().describe("Must match a rubric criterion id."),
+              score: z.number().min(0).max(10),
+              evidence: z
+                .string()
+                .describe(
+                  "Quote or close paraphrase from the resume. Use 'no evidence in resume' when there is nothing to cite.",
+                ),
+            }),
+          ),
+          risks: z.array(
+            z.object({
+              severity: z.enum(["low", "medium", "high"]),
+              note: z
+                .string()
+                .describe("Phrased as something the recruiter can ask on the screen."),
+            }),
+          ),
+          rationale: z.string().describe("Two or three sentences for the recruiter."),
+        }),
       }),
     },
   );
@@ -265,14 +287,14 @@ export function buildTools(roleId: string) {
       saveRubric,
       listCandidates,
       readCandidate,
-      saveProfile,
-      saveScore,
       saveOutreach,
       saveRejection,
     ],
     // The screening subagent gets a deliberately narrow surface: it can read the
-    // rubric and one resume, and write that candidate's profile and score. It
-    // cannot touch the rubric or draft outreach.
-    screener: [getRole, readCandidate, saveProfile, saveScore],
+    // rubric (lean — no JD text or roster) and one resume, and write that
+    // candidate's profile + scorecard in a single call. It cannot touch the
+    // rubric or draft outreach. (The supervisor delegates all screening, so it
+    // no longer needs the profile/score write tools itself.)
+    screener: [getRubric, readCandidate, saveScreening],
   };
 }

@@ -10,8 +10,15 @@ config({ path: ".env.local" });
 
 
 async function main() {
-  if (!process.env.GEMINI_API_KEY) {
-    console.error("GEMINI_API_KEY is not set. Copy .env.local.example to .env.local.");
+  const provider = process.env.AGENT_PROVIDER ?? "kimi";
+  const keyEnvName =
+    provider === "openrouter"
+      ? "OPENROUTER_API_KEY"
+      : provider === "gemini"
+        ? "GEMINI_API_KEY"
+        : "MOONSHOT_API_KEY";
+  if (!process.env[keyEnvName]) {
+    console.error(`${keyEnvName} is not set. Copy .env.local.example to .env.local.`);
     process.exit(1);
   }
 

@@ -11,7 +11,7 @@
   <img alt="frontend" src="https://img.shields.io/badge/frontend-Next.js_16_·_Tailwind_·_shadcn-0d1b2a">
   <img alt="backend" src="https://img.shields.io/badge/backend-Supabase-125a4d">
   <img alt="agent" src="https://img.shields.io/badge/agent-LangGraph_deepagents-125a4d">
-  <img alt="LLM" src="https://img.shields.io/badge/LLM-Gemini_(free)-e9c46a">
+  <img alt="LLM" src="https://img.shields.io/badge/LLM-Kimi_(Moonshot)-e9c46a">
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
 </p>
 
@@ -71,7 +71,7 @@ subagent** that handles one candidate at a time.
 ## 🏗️ Architecture
 
 <p align="center">
-  <img src="assets/architecture.svg" alt="Shortlist architecture — Browser → Server Actions / api-agent → Supabase & the deepagents graph (supervisor + screener subagents) → Gemini" width="100%">
+  <img src="assets/architecture.svg" alt="Shortlist architecture — Browser → Server Actions / api-agent → Supabase & the deepagents graph (supervisor + screener subagents) → Kimi" width="100%">
 </p>
 
 Résumés enter by paste or in-browser PDF extraction; server actions persist to Supabase; the
@@ -80,7 +80,8 @@ candidate to a screener subagent — whose tools read and write straight back to
 UI just re-reads the pipeline.
 
 **Stack** — Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · Supabase (Postgres) ·
-LangGraph `deepagents` on **Gemini** by default (`AGENT_PROVIDER=openrouter` swaps to Nemotron) ·
+LangGraph `deepagents` on **Kimi** (Moonshot `kimi-k2.6`) by default (`AGENT_PROVIDER=openrouter` or
+`=gemini` swaps to a fallback) ·
 streaming SSE endpoint that surfaces tool activity as recruiter-readable verbs and aborts the run
 if the client disconnects.
 
@@ -103,16 +104,18 @@ if the client disconnects.
 
 ## 🚀 Run it locally
 
-**Prerequisites** — Node 20+ · a [Supabase](https://supabase.com) project · a free
-[Gemini](https://aistudio.google.com/apikey) API key (no card) — or OpenRouter.
+**Prerequisites** — Node 20+ · a [Supabase](https://supabase.com) project · a
+[Kimi / Moonshot](https://platform.moonshot.ai/console/api-keys) API key — or OpenRouter / Gemini.
 
 **1. Configure environment**
 ```bash
 cp .env.local.example .env.local
 ```
 ```bash
-GEMINI_API_KEY=...                                # agent runs on Gemini by default
-OPENROUTER_API_KEY=sk-or-...                       # fallback (AGENT_PROVIDER=openrouter)
+MOONSHOT_API_KEY=sk-...                             # agent runs on Kimi (Moonshot) by default
+# KIMI_MODEL=kimi-k2.6                              # optional; also kimi-k2.5 / kimi-k2.7-code / kimi-k3
+# KIMI_BASE_URL=https://api.moonshot.ai/v1          # optional; use api.moonshot.cn for the China platform
+OPENROUTER_API_KEY=sk-or-...                        # fallback (AGENT_PROVIDER=openrouter)
 SUPABASE_URL=https://<your-project>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service_role secret>    # server-only, never expose
 ```

@@ -201,6 +201,12 @@ export function saveScore(id: string, score: Score) {
   return patchCandidate(id, { score });
 }
 
+// Profile and score written in one UPDATE — the screener produces both together,
+// so this is one round-trip and one DB write instead of two.
+export function saveScreening(id: string, profile: Profile, score: Score) {
+  return patchCandidate(id, { profile, score });
+}
+
 export function saveOutreach(id: string, outreach: Outreach) {
   return patchCandidate(id, { outreach });
 }

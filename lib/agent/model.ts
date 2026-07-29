@@ -5,11 +5,11 @@ import type { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager
 import type { ChatResult, ChatGenerationChunk } from "@langchain/core/outputs";
 
 // The deep-agent harness (supervisor + screener subagent) runs on one model.
-// Gemini is the default: its free tier has a large per-minute token budget that
-// comfortably fits the harness's context (system prompt + tool schemas + résumé).
-// Set AGENT_PROVIDER=openrouter to run on Nemotron instead (a proven fallback if
-// a Gemini quota is exhausted). Every call passes through one shared throttle to
-// stay under the per-minute request limit.
+// Kimi (Moonshot) is the default: a paid, OpenAI-compatible endpoint whose K2
+// models are strong at agentic tool-calling and have the long context this
+// harness needs (system prompt + tool schemas + résumé). Set AGENT_PROVIDER to
+// "openrouter" or "gemini" to fall back to one of those instead. Every call
+// passes through one shared throttle to stay under the per-minute request limit.
 const MIN_INTERVAL_MS = Number(process.env.MODEL_MIN_INTERVAL_MS ?? 6000);
 
 let gate: Promise<void> = Promise.resolve();
@@ -48,6 +48,22 @@ export class ThrottledChatOpenAI extends ChatOpenAI {
   }
 }
 
+// Kimi (Moonshot) is OpenAI-compatible, so it reuses the throttled ChatOpenAI
+// path with Moonshot's base URL. The model and base URL can be overridden with
+// env vars without a code change (e.g. KIMI_BASE_URL for the .cn endpoint).
+function kimi() {
+  return new ThrottledChatOpenAI({
+    model: process.env.KIMI_MODEL ?? "kimi-k2.6",
+    apiKey: process.env.MOONSHOT_API_KEY,
+    configuration: {
+      baseURL: process.env.KIMI_BASE_URL ?? "https://api.moonshot.ai/v1",
+    },
+    maxTokens: 8000,
+    maxRetries: 4,
+    streaming: true,
+  });
+}
+
 function gemini() {
   return new ThrottledChatGoogle({
     model: "gemini-2.0-flash",
@@ -69,6 +85,14 @@ function openRouter() {
   });
 }
 
+// Kimi is the default. AGENT_PROVIDER=openrouter | gemini flips to a fallback.
 export function createSupervisorModel() {
-  return process.env.AGENT_PROVIDER === "openrouter" ? openRouter() : gemini();
+  switch (process.env.AGENT_PROVIDER) {
+    case "openrouter":
+      return openRouter();
+    case "gemini":
+      return gemini();
+    default:
+      return kimi();
+  }
 }

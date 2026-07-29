@@ -63,7 +63,7 @@
 
   <!-- LLM -->
   <rect x="700" y="500" width="280" height="46" rx="12" fill="#0f2233" stroke="#22485e"/>
-  <text x="724" y="528" font-size="15" fill="#f6efe0">Gemini (free) · or OpenRouter</text>
+  <text x="724" y="528" font-size="15" fill="#f6efe0">Kimi (Moonshot) · or OpenRouter</text>
   <path d="M840,472 L840,500" fill="none" stroke="#5f7689" stroke-width="2" marker-end="url(#arrow)"/>
 
   <!-- tools <-> Supabase (dashed) -->

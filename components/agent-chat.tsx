@@ -13,16 +13,15 @@ type Turn = { role: "user" | "assistant"; content: string };
 // The tool names are internal; recruiters get the verb, not the function name.
 const TOOL_COPY: Record<string, string> = {
   get_role: "Reading the job description",
+  get_rubric: "Reading the rubric",
   save_rubric: "Writing the rubric",
   list_candidates: "Reading the pipeline",
   read_candidate: "Reading a résumé",
-  save_profile: "Extracting the facts",
-  save_score: "Scoring against the rubric",
+  save_screening: "Scoring against the rubric",
   save_outreach: "Drafting outreach",
   save_rejection: "Drafting a rejection",
   // deepagents delegates through a single built-in `task` tool.
   task: "Screening a candidate",
-  write_todos: "Planning the work",
 };
 
 const OPENERS = [
