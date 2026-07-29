@@ -55,6 +55,10 @@ A [LangGraph **`deepagents`**](https://github.com/langchain-ai/deepagentsjs) gra
 **supervisor** that plans and talks to the recruiter, delegating each résumé to a **screener
 subagent** that handles one candidate at a time.
 
+<p align="center">
+  <img src="assets/harness.svg" alt="Shortlist harness — a supervisor (builds the rubric, ranks the pipeline, drafts outreach/rejections) delegates each résumé via a task to a screener subagent × N (reads the rubric + one résumé, writes an evidence-scored profile + scorecard); tools are closed over the role, both agents run on Kimi, and everything persists to Supabase" width="100%">
+</p>
+
 - **Domain knowledge** ([`lib/agent/prompt.ts`](lib/agent/prompt.ts)) — the opinionated core:
   *score evidence over adjectives* (“cut p99 800ms→120ms by resharding” beats “expert in
   distributed systems”), *scope over title*, *absence of evidence ≠ evidence of absence*, and
