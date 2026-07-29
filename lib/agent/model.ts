@@ -1,17 +1,15 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatOpenAI } from "@langchain/openai";
-import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { CallbackManagerForLLMRun } from "@langchain/core/callbacks/manager";
 import type { ChatResult, ChatGenerationChunk } from "@langchain/core/outputs";
 
-// Gemini is the primary provider: its free tier has a very large per-minute token
-// budget (~250k TPM), which fits this app's long prompts (full résumés + rubric),
-// and with the single-call screener a full run is only a handful of requests —
-// well within its daily allowance. OpenRouter and Groq stay wired as automatic
-// fallbacks (see screen.ts) so one provider being rate-limited or down doesn't
-// stop a screen. Every call passes through one shared throttle to stay under the
-// per-minute request limit; gating start times lets latency-overlapping calls flow.
+// The deep-agent harness (supervisor + screener subagent) runs on one model.
+// Gemini is the default: its free tier has a large per-minute token budget that
+// comfortably fits the harness's context (system prompt + tool schemas + résumé).
+// Set AGENT_PROVIDER=openrouter to run on Nemotron instead (a proven fallback if
+// a Gemini quota is exhausted). Every call passes through one shared throttle to
+// stay under the per-minute request limit.
 const MIN_INTERVAL_MS = Number(process.env.MODEL_MIN_INTERVAL_MS ?? 6000);
 
 let gate: Promise<void> = Promise.resolve();
@@ -50,15 +48,13 @@ export class ThrottledChatOpenAI extends ChatOpenAI {
   }
 }
 
-// --- Providers ---
-
-function gemini(streaming: boolean) {
+function gemini() {
   return new ThrottledChatGoogle({
     model: "gemini-2.0-flash",
     apiKey: process.env.GEMINI_API_KEY,
     maxOutputTokens: 8000,
     maxRetries: 4,
-    streaming,
+    streaming: true,
   });
 }
 
@@ -68,35 +64,11 @@ function openRouter() {
     apiKey: process.env.OPENROUTER_API_KEY,
     configuration: { baseURL: "https://openrouter.ai/api/v1" },
     maxTokens: 8000,
-    maxRetries: 3,
-    streaming: false,
-  });
-}
-
-function groq() {
-  return new ThrottledChatOpenAI({
-    model: "openai/gpt-oss-120b",
-    apiKey: process.env.GROQ_API_KEY,
-    configuration: { baseURL: "https://api.groq.com/openai/v1" },
-    // Groq's free per-minute token cap is tight, so keep this fallback lean.
-    maxTokens: 2500,
-    modelKwargs: { reasoning_effort: "low" },
     maxRetries: 4,
-    streaming: false,
+    streaming: true,
   });
 }
 
-// The supervisor (lean LangGraph agent) streams on Gemini.
 export function createSupervisorModel() {
-  return gemini(true);
-}
-
-// Screening runs on Gemini, then fails over to OpenRouter and Groq. All
-// non-streaming: one structured call in, one scorecard out.
-export function createScreenPrimary() {
-  return gemini(false);
-}
-
-export function createScreenFallbacks(): BaseChatModel[] {
-  return [openRouter(), groq()];
+  return process.env.AGENT_PROVIDER === "openrouter" ? openRouter() : gemini();
 }

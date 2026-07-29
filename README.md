@@ -130,8 +130,8 @@ Server Actions ─── Supabase (roles · candidates · messages)
   │
   ▼
 /api/agent  (SSE stream)
-  └─ deepagents graph  ──►  OpenRouter (ChatOpenAI-compatible)
-       ├─ supervisor (rubric, ranking, outreach)
+  └─ deepagents graph  ──►  Gemini (or OpenRouter)
+       ├─ supervisor (rubric, ranking, outreach, rejections)
        └─ screening subagent × N (one per candidate)
              ▲
              └─ tools read/write straight to Supabase; the UI re-reads the pipeline
@@ -141,8 +141,8 @@ Server Actions ─── Supabase (roles · candidates · messages)
 
 - **Frontend** — Next.js 16 (App Router) · Tailwind v4 · shadcn/ui
 - **Backend / persistence** — Supabase (Postgres)
-- **Agent** — LangGraph `deepagents`, driven through `@langchain/openai`
-  pointed at **OpenRouter** (default model `nvidia/nemotron-3-super-120b-a12b:free`)
+- **Agent** — LangGraph **`deepagents`** harness (supervisor + screener subagent),
+  on **Gemini** by default (`AGENT_PROVIDER=openrouter` swaps to Nemotron as a fallback)
 - **Interface** — streaming SSE endpoint that surfaces tool activity as
   recruiter-readable verbs and aborts the run if the client disconnects
 
@@ -153,7 +153,7 @@ Server Actions ─── Supabase (roles · candidates · messages)
 ### Prerequisites
 - Node 20+
 - A [Supabase](https://supabase.com) project
-- An [OpenRouter](https://openrouter.ai) API key
+- A [Gemini](https://aistudio.google.com/apikey) API key (no card) — or OpenRouter
 
 ### 1. Configure environment
 Copy the template and fill it in:
@@ -161,11 +161,12 @@ Copy the template and fill it in:
 cp .env.local.example .env.local
 ```
 ```bash
-OPENROUTER_API_KEY=sk-or-...
+GEMINI_API_KEY=...                                # agent runs on Gemini by default
+OPENROUTER_API_KEY=sk-or-...                       # fallback (AGENT_PROVIDER=openrouter)
 SUPABASE_URL=https://<your-project>.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=<service_role secret>   # server-only, never expose
-# optional: spacing between model calls in ms (default 4000)
-# OPENROUTER_MIN_INTERVAL_MS=4000
+# optional: spacing between model calls in ms (default 6000)
+# MODEL_MIN_INTERVAL_MS=6000
 ```
 
 ### 2. Create the database

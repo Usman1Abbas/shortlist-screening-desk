@@ -23,15 +23,16 @@ export async function POST(req: Request) {
   if (!roleId || !message?.trim()) {
     return Response.json({ error: "roleId and message are required." }, { status: 400 });
   }
-  // Groq is the primary provider, with OpenRouter and Gemini as fallbacks.
-  // Any one key present is enough to run.
-  if (
-    !process.env.GROQ_API_KEY &&
-    !process.env.OPENROUTER_API_KEY &&
-    !process.env.GEMINI_API_KEY
-  ) {
+  // The agent runs on Gemini by default (or OpenRouter with AGENT_PROVIDER).
+  const needsOpenRouter = process.env.AGENT_PROVIDER === "openrouter";
+  const key = needsOpenRouter ? process.env.OPENROUTER_API_KEY : process.env.GEMINI_API_KEY;
+  if (!key) {
     return Response.json(
-      { error: "Set GROQ_API_KEY (or OPENROUTER_API_KEY / GEMINI_API_KEY) in .env.local and restart." },
+      {
+        error: needsOpenRouter
+          ? "OPENROUTER_API_KEY is not set. Add it to .env.local and restart."
+          : "GEMINI_API_KEY is not set. Add it to .env.local and restart.",
+      },
       { status: 500 },
     );
   }
