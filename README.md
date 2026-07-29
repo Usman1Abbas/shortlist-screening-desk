@@ -1,162 +1,120 @@
-# Shortlist — a deep-agent résumé screening desk
+<p align="center">
+  <img src="assets/banner.svg" alt="Shortlist — résumé screening desk" width="100%">
+</p>
 
-A custom AI agent for **in-house technical recruiters**. Paste a job description and
-Shortlist writes a defensible scoring rubric from it *before it reads a single
-résumé*, then screens a batch of résumés against that same rubric — producing an
-evidence-backed scorecard, risk flags phrased as questions to ask on a screen, a
-ranked shortlist, and a personalised outreach draft for the strong candidates.
+<h1 align="center">Shortlist — Résumé Screening Desk</h1>
 
-> **Live demo:** https://shortlist-screening-desk.vercel.app
->
-> **Repo:** https://github.com/Usman1Abbas/shortlist-screening-desk
+<p align="center"><em>Reads the job description first, then the résumés — never the other way round.</em></p>
 
----
+<p align="center">
+  <a href="https://shortlist-screening-desk.vercel.app"><img alt="live demo" src="https://img.shields.io/badge/▶_live_demo-shortlist--screening--desk.vercel.app-1b9c85"></a>
+  <img alt="frontend" src="https://img.shields.io/badge/frontend-Next.js_16_·_Tailwind_·_shadcn-0d1b2a">
+  <img alt="backend" src="https://img.shields.io/badge/backend-Supabase-125a4d">
+  <img alt="agent" src="https://img.shields.io/badge/agent-LangGraph_deepagents-125a4d">
+  <img alt="LLM" src="https://img.shields.io/badge/LLM-Gemini_(free)-e9c46a">
+  <img alt="license" src="https://img.shields.io/badge/license-MIT-blue">
+</p>
 
-## The problem
+**Shortlist** is a custom AI agent for **in-house technical recruiters**. Paste a job
+description and it writes a defensible **scoring rubric from the JD** *before it reads a single
+résumé*, then screens a batch — producing an **evidence-cited scorecard**, risk flags phrased
+as questions to ask on a screen, a ranked shortlist, and personalised **outreach / rejection
+drafts**. Résumés go in by paste or by **uploading PDFs — or a whole folder**.
 
-In-house recruiters work a queue of 20–200 applicants per req and are measured on
-how many make it to a hiring-manager screen without being sent back. They usually
-aren't technical enough to judge a résumé's claims unaided, so the judgement call
-is slow, inconsistent, and easy to bias.
+> The product's output is *an argument about a person, backed by evidence*. Every score on
+> screen is one click from the quoted résumé line behind it — the interface never shows a
+> number you can't interrogate.
 
-Shortlist is the screening desk that does the first pass: it supplies the
-judgement **and the evidence behind it**, applies the *same* rubric to every
-candidate so two people with the same evidence get the same score, and hands back
-a ranked pipeline the recruiter can act on today.
+**🔗 Live:** <https://shortlist-screening-desk.vercel.app> &nbsp;·&nbsp; **Repo:** <https://github.com/Usman1Abbas/shortlist-screening-desk>
 
-One capability, done well: **turn a JD + a stack of résumés into a defensible,
-evidence-cited shortlist.**
-
----
-
-## What it does
-
-1. **Builds a rubric from the JD** — must-haves (hard filters), 3–8 weighted
-   criteria pulled from what the role actually asks for, and a calibration note
-   for how "senior" should read *for this specific role*. Nothing gets scored
-   until a rubric exists.
-2. **Screens résumés against that rubric** — one screening subagent per
-   candidate, each producing a structured profile and a per-criterion scorecard
-   with a quote/paraphrase of evidence for every criterion.
-3. **Ranks the pipeline** — overall 0–100, a `strong / maybe / no` verdict, and
-   risk flags written as questions a recruiter can ask on the phone screen.
-4. **Drafts outreach** — for strong candidates, hooked to something specific in
-   their actual résumé, under 150 words.
-5. **Drafts respectful rejections** — for candidates being passed on: warm and
-   reason-light (acknowledges a genuine strength, no critique of gaps), which is
-   both kinder and lower-risk than an explained rejection.
-6. **Ingests résumés two ways** — paste them, or **upload PDFs / an entire
-   folder** (text is extracted in the browser).
-
-After a batch is screened the desk proactively *offers* these next actions —
-outreach for the strong, rejections for the rest — but leaves the call to the
-recruiter. All drafts are reviewed and sent by a human; nothing is auto-sent.
-
-Every score on screen is one click from the résumé evidence behind it.
+> Open the live link and click the seeded **“Founding AI / Agent Engineer — Z360”** role: a
+> fully-screened pipeline (rubric, evidence-scored candidates, an outreach and a rejection
+> draft) renders instantly — no setup, no API key needed to review it.
 
 ---
 
-## Harness design
+## ✨ What it does
 
-The point of this project is the harness, not the chat box. It's a
-[LangGraph **deepagents**](https://github.com/langchain-ai/deepagentsjs) graph
-with domain knowledge, a narrow custom toolset, and a delegation structure — a
-supervisor agent that plans and talks to the recruiter, and a screening subagent
-that does one résumé at a time.
+- **Builds a rubric from the JD.** Hard must-haves + 3–8 weighted criteria pulled from what the
+  role actually asks for, plus a calibration note for how “senior” should read *for this role*.
+  Nothing gets scored until a rubric exists.
+- **Screens résumés against that one rubric.** One screener subagent per candidate → a structured
+  profile and a per-criterion scorecard with a **quote of evidence** for every criterion.
+- **Ranks the pipeline.** Overall 0–100, a `strong / maybe / no` verdict, and risk flags written
+  as **questions a recruiter can ask on the phone screen** — never as rejections.
+- **Drafts outreach & rejections.** Personalised outreach for strong candidates; warm,
+  reason-light rejections for the rest. All **drafts, human-reviewed** — nothing is auto-sent.
+- **Two ways in.** Paste résumés, or **upload PDFs / an entire folder** — text is extracted in
+  the browser and flows into the same pipeline.
 
-### 1. Domain knowledge (`lib/agent/prompt.ts`)
+---
 
-The system prompt is the opinionated core — it encodes how a good screener reads
-a résumé:
+## 🧠 The harness (a real deep agent, not a chatbot)
 
-- **Score evidence, not adjectives.** "Expert in distributed systems" is worth
-  nothing; "cut p99 from 800ms to 120ms by resharding the write path" is worth a
-  lot. No supporting detail → treated as unverified.
-- **Weigh scope over title**, and read trajectory across roles, not just the
-  current row.
-- **Absence of evidence is not evidence of absence** — gaps become questions to
-  ask, not rejections.
-- **Bias guardrails** — never infer or weigh age, gender, ethnicity,
-  nationality, health, or school prestige; ignore photos / DOB / marital status
-  if present.
+A [LangGraph **`deepagents`**](https://github.com/langchain-ai/deepagentsjs) graph: a
+**supervisor** that plans and talks to the recruiter, delegating each résumé to a **screener
+subagent** that handles one candidate at a time.
 
-### 2. Custom tools (`lib/agent/tools.ts`)
+- **Domain knowledge** ([`lib/agent/prompt.ts`](lib/agent/prompt.ts)) — the opinionated core:
+  *score evidence over adjectives* (“cut p99 800ms→120ms by resharding” beats “expert in
+  distributed systems”), *scope over title*, *absence of evidence ≠ evidence of absence*, and
+  hard **bias guardrails** (never infer age, gender, ethnicity, nationality, health, or schooling).
+- **Delegation** ([`lib/agent/index.ts`](lib/agent/index.ts)) — the screener subagent gets a
+  deliberately **narrow tool surface**; one delegation per candidate keeps résumé twelve as
+  well-read as résumé one, instead of the supervisor compressing later candidates into vibes.
+- **Guardrails** — tools are **built per request and closed over the role**, so a score can't
+  land on the wrong pipeline; `save_score` **rejects a partial scorecard** rather than
+  persisting an unreadable overall number.
 
-Tools are built **per request and closed over the role being screened**, so the
-model never carries a role id around and can't write a score into the wrong
-pipeline. Every write also re-checks that the candidate belongs to the role.
+---
 
-| Tool | Who can call it | What it does |
+## 🏗️ Architecture
+
+```
+Browser (Next.js · Tailwind · shadcn)
+  ├─ paste résumés ─┐
+  ├─ upload PDFs ───┤→ text extracted client-side (pdf.js, lib/pdf.ts)
+  │                 │
+  ▼                 ▼
+Server Actions ── Supabase (roles · candidates · messages)
+  │
+  ▼
+/api/agent  (SSE stream)
+  └─ deepagents graph  ──►  Gemini (or OpenRouter)
+       ├─ supervisor    → rubric · ranking · outreach · rejections
+       └─ screener × N  → one subagent per candidate
+             ▲
+             └─ tools read/write straight to Supabase; the UI re-reads the pipeline
+```
+
+**Stack** — Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · Supabase (Postgres) ·
+LangGraph `deepagents` on **Gemini** by default (`AGENT_PROVIDER=openrouter` swaps to Nemotron) ·
+streaming SSE endpoint that surfaces tool activity as recruiter-readable verbs and aborts the run
+if the client disconnects.
+
+---
+
+## 🧰 Tools
+
+| Tool | Surface | What it does |
 |---|---|---|
 | `get_role` | supervisor + subagent | Read the JD, current rubric, and candidate roster |
 | `save_rubric` | supervisor | Create/replace the weighted rubric |
 | `list_candidates` | supervisor | Read the whole ranked pipeline |
 | `read_candidate` | subagent | Read one résumé's full text |
 | `save_profile` | subagent | Write structured facts from a résumé |
-| `save_score` | subagent | Write a scorecard — **rejected** if it skips any rubric criterion |
+| `save_score` | subagent | Write a scorecard — **rejected if it skips any rubric criterion** |
 | `save_outreach` | supervisor | Save a personalised outreach draft (strong candidates) |
 | `save_rejection` | supervisor | Save a warm, reason-light rejection draft (passed-over candidates) |
 
-### 3. Delegation (`lib/agent/index.ts`)
-
-The **screening subagent** gets a deliberately narrow surface: it can read the
-rubric and one résumé and write that candidate's profile and score — it cannot
-touch the rubric or draft outreach. One delegation per candidate keeps résumé
-twelve as well-read as résumé one, instead of the supervisor compressing later
-candidates into vibes as its context fills.
-
-### 4. Guardrails & robustness
-
-- `save_score` refuses a partial scorecard rather than persisting an unreadable
-  overall number.
-- **Rate-limit throttle** (`lib/agent/model.ts`) — a shared min-interval gate
-  every model call (supervisor + subagents) passes through, keeping the run
-  under the model provider's per-minute limit deterministically, plus
-  `maxRetries` back-off for stray 429s.
-- The supervisor screens candidates **sequentially**, so each résumé is handled
-  start-to-finish in one pass.
-
 ---
 
-## Architecture
+## 🚀 Run it locally
 
-```
-Browser (Next.js / React / shadcn)
-  ├─ paste résumés  ─┐
-  ├─ upload PDFs ────┤→ text extracted client-side (pdf.js, lib/pdf.ts)
-  │                  │
-  ▼                  ▼
-Server Actions ─── Supabase (roles · candidates · messages)
-  │
-  ▼
-/api/agent  (SSE stream)
-  └─ deepagents graph  ──►  Gemini (or OpenRouter)
-       ├─ supervisor (rubric, ranking, outreach, rejections)
-       └─ screening subagent × N (one per candidate)
-             ▲
-             └─ tools read/write straight to Supabase; the UI re-reads the pipeline
-```
+**Prerequisites** — Node 20+ · a [Supabase](https://supabase.com) project · a free
+[Gemini](https://aistudio.google.com/apikey) API key (no card) — or OpenRouter.
 
-### Stack
-
-- **Frontend** — Next.js 16 (App Router) · Tailwind v4 · shadcn/ui
-- **Backend / persistence** — Supabase (Postgres)
-- **Agent** — LangGraph **`deepagents`** harness (supervisor + screener subagent),
-  on **Gemini** by default (`AGENT_PROVIDER=openrouter` swaps to Nemotron as a fallback)
-- **Interface** — streaming SSE endpoint that surfaces tool activity as
-  recruiter-readable verbs and aborts the run if the client disconnects
-
----
-
-## Running locally
-
-### Prerequisites
-- Node 20+
-- A [Supabase](https://supabase.com) project
-- A [Gemini](https://aistudio.google.com/apikey) API key (no card) — or OpenRouter
-
-### 1. Configure environment
-Copy the template and fill it in:
+**1. Configure environment**
 ```bash
 cp .env.local.example .env.local
 ```
@@ -164,13 +122,10 @@ cp .env.local.example .env.local
 GEMINI_API_KEY=...                                # agent runs on Gemini by default
 OPENROUTER_API_KEY=sk-or-...                       # fallback (AGENT_PROVIDER=openrouter)
 SUPABASE_URL=https://<your-project>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<service_role secret>   # server-only, never expose
-# optional: spacing between model calls in ms (default 6000)
-# MODEL_MIN_INTERVAL_MS=6000
+SUPABASE_SERVICE_ROLE_KEY=<service_role secret>    # server-only, never expose
 ```
 
-### 2. Create the database
-Run this in the Supabase SQL editor:
+**2. Create the database** — run this in the Supabase SQL editor:
 ```sql
 create table if not exists roles (
   id uuid primary key default gen_random_uuid(),
@@ -198,57 +153,50 @@ alter table candidates enable row level security;
 alter table messages enable row level security;
 ```
 
-### 3. Install & run
+**3. Install & run**
 ```bash
 npm install
-npm run dev            # http://localhost:3000
+npm run dev          # http://localhost:3000
 ```
-
 Open a role, add résumés (paste or upload PDFs), then tell the desk
-*"Build the rubric and screen everyone."*
+*“Build the rubric and screen everyone.”*
 
-### Tests / scripts
+**Scripts**
 ```bash
-npx tsx scripts/smoke.ts          # end-to-end: rubric → screen 3 fixtures → ranked pipeline
+npx tsx scripts/smoke.ts          # end-to-end: rubric → screen fixtures → ranked pipeline
+npx tsx scripts/seed-demo.ts      # seed a fully-screened demo role (no model calls)
 npx tsx scripts/pdf-test.ts       # PDF extraction unit tests
-npx tsx scripts/throttle-test.ts  # rate-limit throttle timing
 ```
 
-### Deploying to Vercel
-Import the repo, set the three env vars above in **Project → Settings →
-Environment Variables**, and deploy. Persistence lives in Supabase, so the
-serverless runtime holds no state.
+**Deploy (Vercel)** — import the repo, set the env vars above in Project → Settings, deploy.
+Persistence lives in Supabase, so the serverless runtime holds no state.
 
 ---
 
-## Data model (`lib/types.ts`)
+## 🗂️ Data model ([`lib/types.ts`](lib/types.ts))
 
-- **Role** — `title`, `company`, `jdText`, `rubric` (`mustHaves`, weighted
-  `criteria`, `calibration`)
-- **Candidate** — `label`, `rawResume`, `profile`, `score` (`overall`,
-  `verdict`, per-criterion `breakdown` with evidence, `risks`, `rationale`),
-  `outreach`
+- **Role** — `title`, `company`, `jdText`, `rubric` (`mustHaves`, weighted `criteria`, `calibration`)
+- **Candidate** — `label`, `rawResume`, `profile`, `score` (`overall`, `verdict`, per-criterion
+  `breakdown` with evidence, `risks`, `rationale`), `outreach`, `rejection`
 - **ChatMessage** — the recruiter ↔ desk transcript per role
 
 Design intent and tone are documented in [`.impeccable.md`](.impeccable.md).
 
 ---
 
-## Time spent
+## ⏱️ Time spent
 
 _~[fill in] hours over a weekend._
 
 ---
 
-## What I'd build next
+## 🔭 What I'd build next
 
-- **Multi-user auth** with per-recruiter data scoping (Supabase Auth + real RLS
-  policies), replacing the current single-tenant service-role access.
-- **Store original PDFs** in Supabase Storage so a recruiter can open the source
-  file, and add **OCR** for scanned/image-only résumés (currently skipped).
-- **Scoring evals** — a regression suite that checks the same résumé + rubric
-  yields a consistent score, to catch drift when the model or prompt changes.
-- **Outreach send integration** (Gmail/Outlook) instead of draft-only.
-- **Dedup & re-screening** — detect the same candidate across reqs, and re-run a
-  pipeline when the rubric changes.
-- **Paid-model path** for large batches, removing the free-tier daily cap.
+- **Multi-user auth** with per-recruiter data scoping (Supabase Auth + real RLS policies),
+  replacing the current single-tenant service-role access.
+- **Store original PDFs** in Supabase Storage so a recruiter can open the source file, and add
+  **OCR** for scanned/image-only résumés (currently skipped).
+- **Scoring evals** — a regression suite that checks the same résumé + rubric yields a consistent
+  score, to catch drift when the model or prompt changes.
+- **Outreach send integration** (Gmail/Outlook) instead of draft-only, and **dedup** of the same
+  candidate across roles.

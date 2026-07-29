@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-label="Shortlist — résumé screening desk">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1b2a"/>
+      <stop offset="1" stop-color="#10283a"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1b9c85"/>
+      <stop offset="1" stop-color="#2bb79c"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#bg)"/>
+
+  <!-- left: wordmark + tagline -->
+  <text x="80" y="150" font-family="Georgia, 'Times New Roman', serif" font-size="88" fill="#f6efe0">Shortlist</text>
+  <rect x="82" y="176" width="470" height="2" fill="#e9c46a" opacity="0.55"/>
+  <text x="82" y="214" font-family="Georgia, serif" font-size="23" font-style="italic" fill="#a9bccc">Reads the job description first, then the résumés — never the other way round.</text>
+
+  <g font-family="Georgia, serif" font-size="15" fill="#7f97ab">
+    <text x="82" y="256">LangGraph deep-agent harness</text>
+    <text x="300" y="256">·</text>
+    <text x="316" y="256">Next.js · Supabase · Gemini (free)</text>
+  </g>
+
+  <!-- right: a candidate scorecard motif -->
+  <g transform="translate(792,64)">
+    <rect x="0" y="0" width="328" height="192" rx="12" fill="#0a1826" stroke="#20384c"/>
+    <text x="22" y="40" font-family="Georgia, serif" font-size="22" fill="#f6efe0">Amara Okafor</text>
+    <text x="22" y="62" font-family="Georgia, serif" font-size="13" fill="#7f97ab">Staff Engineer · payments</text>
+
+    <!-- verdict pill -->
+    <rect x="238" y="22" width="70" height="26" rx="13" fill="#123a30" stroke="#1b9c85"/>
+    <text x="273" y="40" text-anchor="middle" font-family="Georgia, serif" font-size="14" fill="#2bb79c">strong</text>
+
+    <!-- score -->
+    <text x="238" y="96" font-family="Georgia, serif" font-size="40" fill="#e9c46a">85</text>
+    <text x="291" y="96" font-family="Georgia, serif" font-size="16" fill="#5f7689">/100</text>
+
+    <!-- criteria bars -->
+    <g>
+      <text x="22" y="98" font-family="Georgia, serif" font-size="12" fill="#a9bccc">backend depth</text>
+      <rect x="22" y="106" width="180" height="7" rx="3.5" fill="#16293a"/>
+      <rect x="22" y="106" width="162" height="7" rx="3.5" fill="url(#bar)"/>
+
+      <text x="22" y="132" font-family="Georgia, serif" font-size="12" fill="#a9bccc">postgres</text>
+      <rect x="22" y="140" width="180" height="7" rx="3.5" fill="#16293a"/>
+      <rect x="22" y="140" width="126" height="7" rx="3.5" fill="url(#bar)"/>
+
+      <text x="22" y="166" font-family="Georgia, serif" font-size="12" fill="#a9bccc">ownership</text>
+      <rect x="22" y="174" width="180" height="7" rx="3.5" fill="#16293a"/>
+      <rect x="22" y="174" width="171" height="7" rx="3.5" fill="url(#bar)"/>
+    </g>
+  </g>
+</svg>
