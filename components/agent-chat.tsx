@@ -100,14 +100,24 @@ export function AgentChat({
             const copy = TOOL_COPY[event.name] ?? event.name;
             setActivity((a) => (a.at(-1) === copy ? a : [...a, copy]));
           } else if (event.type === "error") {
-            throw new Error(event.message);
+            throw Object.assign(new Error(event.message), {
+              rateLimited: event.rateLimited === true,
+            });
           }
         }
       }
     } catch (error) {
-      toast.error("The desk stopped mid-task", {
-        description: error instanceof Error ? error.message : String(error),
-      });
+      // A hit on the free tiers' daily limit is expected, not a fault — show it
+      // as a calm note in the transcript and point to the pre-screened pipeline,
+      // rather than a red "something broke" toast.
+      if ((error as { rateLimited?: boolean })?.rateLimited) {
+        answer =
+          error instanceof Error ? error.message : "Free AI limit reached for today.";
+      } else {
+        toast.error("The desk stopped mid-task", {
+          description: error instanceof Error ? error.message : String(error),
+        });
+      }
     } finally {
       if (answer.trim()) {
         setTurns((t) => [...t, { role: "assistant", content: answer }]);

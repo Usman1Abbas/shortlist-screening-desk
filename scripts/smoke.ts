@@ -10,8 +10,8 @@ config({ path: ".env.local" });
 
 
 async function main() {
-  if (!process.env.OPENROUTER_API_KEY) {
-    console.error("OPENROUTER_API_KEY is not set. Copy .env.local.example to .env.local.");
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("GEMINI_API_KEY is not set. Copy .env.local.example to .env.local.");
     process.exit(1);
   }
 

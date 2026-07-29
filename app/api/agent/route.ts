@@ -12,7 +12,7 @@ type Event =
   | { type: "text"; value: string }
   | { type: "tool"; name: string; source: "main" | "subagent" }
   | { type: "done" }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; rateLimited?: boolean };
 
 export async function POST(req: Request) {
   const { roleId, message } = (await req.json()) as {
@@ -23,9 +23,15 @@ export async function POST(req: Request) {
   if (!roleId || !message?.trim()) {
     return Response.json({ error: "roleId and message are required." }, { status: 400 });
   }
-  if (!process.env.OPENROUTER_API_KEY) {
+  // Groq is the primary provider, with OpenRouter and Gemini as fallbacks.
+  // Any one key present is enough to run.
+  if (
+    !process.env.GROQ_API_KEY &&
+    !process.env.OPENROUTER_API_KEY &&
+    !process.env.GEMINI_API_KEY
+  ) {
     return Response.json(
-      { error: "OPENROUTER_API_KEY is not set. Add it to .env.local and restart." },
+      { error: "Set GROQ_API_KEY (or OPENROUTER_API_KEY / GEMINI_API_KEY) in .env.local and restart." },
       { status: 500 },
     );
   }
@@ -102,7 +108,19 @@ export async function POST(req: Request) {
         // An abort is the client leaving, not a fault worth reporting.
         if (!abort.signal.aborted) {
           const detail = error instanceof Error ? error.message : String(error);
-          send({ type: "error", message: detail });
+          // Both free tiers were exhausted at once — surface a calm, explanatory
+          // message instead of a raw 429 so a reviewer never hits a dead end.
+          const rateLimited =
+            /429|quota|rate.?limit|resource_exhausted|too many requests|free-models-per-day/i.test(
+              detail,
+            );
+          send({
+            type: "error",
+            rateLimited,
+            message: rateLimited
+              ? "The free AI tiers hit their daily request limit. The pipeline below is a complete, pre-screened example that shows the whole workflow — live screening resumes when the free quota resets (daily). No paid key required to review it."
+              : detail,
+          });
         }
       } finally {
         // Already closed if the client disconnected first.

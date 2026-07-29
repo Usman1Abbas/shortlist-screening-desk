@@ -1,6 +1,7 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import * as store from "../store";
+import { screenCandidate } from "./screen";
 
 // Tools are built per-request and closed over the role being screened, so the
 // model never has to carry a role id around and can't accidentally write a
@@ -13,20 +14,6 @@ const criterionSchema = z.object({
   name: z.string().describe("Human-readable criterion name."),
   weight: z.number().min(1).max(5).describe("Importance, 1-5."),
   bar: z.string().describe("What a strong candidate looks like on this criterion."),
-});
-
-const profileSchema = z.object({
-  name: z.string().describe("Candidate's full name as written on the resume."),
-  currentTitle: z.string().nullable(),
-  yearsExperience: z
-    .number()
-    .nullable()
-    .describe("Total relevant years. Null if the resume gives no way to tell."),
-  companies: z.array(z.string()),
-  skills: z.array(z.string()),
-  highlights: z
-    .array(z.string())
-    .describe("Two or three concrete achievements, quoted or closely paraphrased."),
 });
 
 export function buildTools(roleId: string) {
@@ -121,88 +108,19 @@ export function buildTools(roleId: string) {
     },
   );
 
-  const readCandidate = tool(
+  const screenCandidateTool = tool(
     async ({ candidateId }) => {
-      const candidate = await ownedCandidate(candidateId);
-      if (!candidate) return NOT_OURS;
-      return JSON.stringify({
-        candidateId: candidate.id,
-        label: candidate.label,
-        resume: candidate.rawResume,
-      });
+      if (!(await ownedCandidate(candidateId))) return NOT_OURS;
+      // The whole screen — read the résumé, extract the profile, score every
+      // criterion — happens in one structured model call inside screenCandidate.
+      const result = await screenCandidate(roleId, candidateId);
+      return JSON.stringify(result);
     },
     {
-      name: "read_candidate",
+      name: "screen_candidate",
       description:
-        "Read one candidate's full resume text. Expensive in context — screen candidates through delegate_screening rather than calling this in the main thread.",
+        "Screen one candidate against the saved rubric in a single pass: it reads their résumé, extracts a profile, and writes a full scorecard with evidence, risks and a verdict. Call once per candidate. Requires a rubric to exist first. Returns the name, overall score and verdict; read the full pipeline back with list_candidates.",
       schema: z.object({ candidateId: z.string() }),
-    },
-  );
-
-  const saveProfile = tool(
-    async ({ candidateId, ...profile }) => {
-      if (!(await ownedCandidate(candidateId))) return NOT_OURS;
-      await store.saveProfile(candidateId, profile);
-      return JSON.stringify({ ok: true, name: profile.name });
-    },
-    {
-      name: "save_profile",
-      description:
-        "Write the structured facts extracted from a resume. Call this before save_score.",
-      schema: profileSchema.extend({ candidateId: z.string() }),
-    },
-  );
-
-  const saveScore = tool(
-    async ({ candidateId, ...score }) => {
-      if (!(await ownedCandidate(candidateId))) return NOT_OURS;
-      const role = await store.getRole(roleId);
-      const expected = role?.rubric?.criteria.map((c) => c.id) ?? [];
-      const got = score.breakdown.map((b) => b.criterionId);
-      const missing = expected.filter((id) => !got.includes(id));
-      if (missing.length > 0) {
-        // Refuse rather than silently persisting a partial scorecard — a
-        // breakdown that skips criteria makes the overall score unreadable.
-        return JSON.stringify({
-          error: `Breakdown is missing criteria: ${missing.join(", ")}. Score every criterion in the rubric, including ones the candidate is weak on.`,
-        });
-      }
-      await store.saveScore(candidateId, score);
-      return JSON.stringify({
-        ok: true,
-        overall: score.overall,
-        verdict: score.verdict,
-      });
-    },
-    {
-      name: "save_score",
-      description:
-        "Write a candidate's scorecard. The breakdown must contain one entry per rubric criterion — the call is rejected otherwise.",
-      schema: z.object({
-        candidateId: z.string(),
-        overall: z.number().min(0).max(100).describe("Weighted 0-100."),
-        verdict: z.enum(["strong", "maybe", "no"]),
-        breakdown: z.array(
-          z.object({
-            criterionId: z.string().describe("Must match a rubric criterion id."),
-            score: z.number().min(0).max(10),
-            evidence: z
-              .string()
-              .describe(
-                "Quote or close paraphrase from the resume. Use 'no evidence in resume' when there is nothing to cite.",
-              ),
-          }),
-        ),
-        risks: z.array(
-          z.object({
-            severity: z.enum(["low", "medium", "high"]),
-            note: z
-              .string()
-              .describe("Phrased as something the recruiter can ask on the screen."),
-          }),
-        ),
-        rationale: z.string().describe("Two or three sentences for the recruiter."),
-      }),
     },
   );
 
@@ -264,15 +182,9 @@ export function buildTools(roleId: string) {
       getRole,
       saveRubric,
       listCandidates,
-      readCandidate,
-      saveProfile,
-      saveScore,
+      screenCandidateTool,
       saveOutreach,
       saveRejection,
     ],
-    // The screening subagent gets a deliberately narrow surface: it can read
-    // the rubric and one resume, and write that candidate's profile and score.
-    // It cannot touch the rubric or draft outreach.
-    screener: [getRole, readCandidate, saveProfile, saveScore],
   };
 }
