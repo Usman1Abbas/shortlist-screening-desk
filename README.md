@@ -70,22 +70,14 @@ subagent** that handles one candidate at a time.
 
 ## 🏗️ Architecture
 
-```
-Browser (Next.js · Tailwind · shadcn)
-  ├─ paste résumés ─┐
-  ├─ upload PDFs ───┤→ text extracted client-side (pdf.js, lib/pdf.ts)
-  │                 │
-  ▼                 ▼
-Server Actions ── Supabase (roles · candidates · messages)
-  │
-  ▼
-/api/agent  (SSE stream)
-  └─ deepagents graph  ──►  Gemini (or OpenRouter)
-       ├─ supervisor    → rubric · ranking · outreach · rejections
-       └─ screener × N  → one subagent per candidate
-             ▲
-             └─ tools read/write straight to Supabase; the UI re-reads the pipeline
-```
+<p align="center">
+  <img src="assets/architecture.svg" alt="Shortlist architecture — Browser → Server Actions / api-agent → Supabase & the deepagents graph (supervisor + screener subagents) → Gemini" width="100%">
+</p>
+
+Résumés enter by paste or in-browser PDF extraction; server actions persist to Supabase; the
+chat hits `/api/agent`, which streams a **deepagents** graph — a supervisor delegating each
+candidate to a screener subagent — whose tools read and write straight back to Supabase, so the
+UI just re-reads the pipeline.
 
 **Stack** — Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · Supabase (Postgres) ·
 LangGraph `deepagents` on **Gemini** by default (`AGENT_PROVIDER=openrouter` swaps to Nemotron) ·
