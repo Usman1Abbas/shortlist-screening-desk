@@ -1,6 +1,7 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
 import * as store from "../store";
+import type { Candidate } from "../types";
 
 // Tools are built per-request and closed over the role being screened, so the
 // model never has to carry a role id around and can't accidentally write a
@@ -49,6 +50,41 @@ export function buildTools(roleId: string) {
     error:
       "No candidate with that id on this role. Use the candidateIds from get_role or list_candidates.",
   });
+
+  // Supervisor tools take a candidate handle that may be a uuid OR a name — in a
+  // follow-up turn the model only has names in context, so requiring the exact id
+  // is what made outreach/rejection silently target nothing. Resolve either: a
+  // valid owned uuid, else a case-insensitive match on name or label within this
+  // role (exact first, then contains). Ambiguous or missing returns a clear error
+  // that names the candidates, so the model can't plausibly claim a save happened.
+  async function resolveCandidate(
+    handle: string,
+  ): Promise<{ candidate: Candidate } | { error: string }> {
+    const h = (handle ?? "").trim();
+    if (UUID_RE.test(h)) {
+      const byId = await store.getCandidate(h);
+      if (byId && byId.roleId === roleId) return { candidate: byId };
+    }
+    const roster = await store.listCandidates(roleId);
+    const names = () => roster.map((c) => c.profile?.name ?? c.label).join(", ");
+    const lc = h.toLowerCase();
+    const named = (c: Candidate) => (c.profile?.name ?? c.label).toLowerCase();
+    const exact = roster.filter((c) => named(c) === lc || c.label.toLowerCase() === lc);
+    const matches = exact.length
+      ? exact
+      : roster.filter((c) => named(c).includes(lc) || c.label.toLowerCase().includes(lc));
+    if (matches.length === 1) return { candidate: matches[0] };
+    if (matches.length > 1) {
+      return {
+        error: `"${handle}" matches ${matches.length} candidates (${matches
+          .map((c) => c.profile?.name ?? c.label)
+          .join(", ")}). Use a fuller name or the candidateId from list_candidates.`,
+      };
+    }
+    return {
+      error: `No candidate matching "${handle}" on this role. Candidates: ${names()}. Pass one of these names, or a candidateId from list_candidates.`,
+    };
+  }
 
   const getRole = tool(
     async () => {
@@ -152,19 +188,23 @@ export function buildTools(roleId: string) {
 
   const readCandidate = tool(
     async ({ candidateId }) => {
-      const candidate = await ownedCandidate(candidateId);
-      if (!candidate) return NOT_OURS;
+      const r = await resolveCandidate(candidateId);
+      if ("error" in r) return JSON.stringify({ error: r.error });
       return JSON.stringify({
-        candidateId: candidate.id,
-        label: candidate.label,
-        resume: candidate.rawResume,
+        candidateId: r.candidate.id,
+        label: r.candidate.label,
+        resume: r.candidate.rawResume,
       });
     },
     {
       name: "read_candidate",
       description:
         "Read one candidate's full resume text. Expensive in context — screen candidates through the screener subagent rather than calling this in the main thread.",
-      schema: z.object({ candidateId: z.string() }),
+      schema: z.object({
+        candidateId: z
+          .string()
+          .describe("The candidate's name, or the candidateId from list_candidates."),
+      }),
     },
   );
 
@@ -230,16 +270,23 @@ export function buildTools(roleId: string) {
 
   const saveOutreach = tool(
     async ({ candidateId, ...outreach }) => {
-      if (!(await ownedCandidate(candidateId))) return NOT_OURS;
-      await store.saveOutreach(candidateId, outreach);
-      return JSON.stringify({ ok: true, subject: outreach.subject });
+      const r = await resolveCandidate(candidateId);
+      if ("error" in r) return JSON.stringify({ error: r.error });
+      await store.saveOutreach(r.candidate.id, outreach);
+      return JSON.stringify({
+        ok: true,
+        candidate: r.candidate.profile?.name ?? r.candidate.label,
+        subject: outreach.subject,
+      });
     },
     {
       name: "save_outreach",
       description:
         "Save a personalised outreach draft for one candidate. Under 150 words, hooked to something specific in their resume.",
       schema: z.object({
-        candidateId: z.string(),
+        candidateId: z
+          .string()
+          .describe("The candidate's name, or the candidateId from list_candidates."),
         subject: z.string(),
         body: z.string(),
         personalizationNotes: z
@@ -251,25 +298,31 @@ export function buildTools(roleId: string) {
 
   const saveRejection = tool(
     async ({ candidateId, ...rejection }) => {
-      const candidate = await ownedCandidate(candidateId);
-      if (!candidate) return NOT_OURS;
+      const r = await resolveCandidate(candidateId);
+      if ("error" in r) return JSON.stringify({ error: r.error });
       // Can't write a rejection for someone who was never screened — that is
       // almost always the model rejecting the wrong candidate.
-      if (!candidate.score) {
+      if (!r.candidate.score) {
         return JSON.stringify({
           error:
             "This candidate has not been screened yet. Screen them before drafting a rejection.",
         });
       }
-      await store.saveRejection(candidateId, rejection);
-      return JSON.stringify({ ok: true, subject: rejection.subject });
+      await store.saveRejection(r.candidate.id, rejection);
+      return JSON.stringify({
+        ok: true,
+        candidate: r.candidate.profile?.name ?? r.candidate.label,
+        subject: rejection.subject,
+      });
     },
     {
       name: "save_rejection",
       description:
         "Save a warm, reason-light rejection note for one candidate the recruiter is passing on. Acknowledge one genuine strength, decline kindly, and give no critique of their gaps. Under 120 words.",
       schema: z.object({
-        candidateId: z.string(),
+        candidateId: z
+          .string()
+          .describe("The candidate's name, or the candidateId from list_candidates."),
         subject: z.string(),
         body: z.string(),
         acknowledges: z
