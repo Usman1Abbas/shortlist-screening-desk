@@ -11,7 +11,7 @@ import type { ChatResult, ChatGenerationChunk } from "@langchain/core/outputs";
 // "openrouter" or "gemini" to fall back to one of those instead. Every call
 // passes through one shared throttle to stay under the per-minute request limit.
 // Default 1500ms spaces calls enough for Moonshot's per-minute limits on a normal
-// tier; raise it via MODEL_MIN_INTERVAL_MS for a tighter free-tier fallback.
+// tier; raise it via MODEL_MIN_INTERVAL_MS if the provider rate-limits.
 const MIN_INTERVAL_MS = Number(process.env.MODEL_MIN_INTERVAL_MS ?? 1500);
 
 let gate: Promise<void> = Promise.resolve();

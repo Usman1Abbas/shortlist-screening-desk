@@ -107,12 +107,12 @@ export function AgentChat({
         }
       }
     } catch (error) {
-      // A hit on the free tiers' daily limit is expected, not a fault — show it
-      // as a calm note in the transcript and point to the pre-screened pipeline,
-      // rather than a red "something broke" toast.
+      // A model rate-limit is transient, not a fault — show it as a calm note in
+      // the transcript and point to the pre-screened pipeline, rather than a red
+      // "something broke" toast.
       if ((error as { rateLimited?: boolean })?.rateLimited) {
         answer =
-          error instanceof Error ? error.message : "Free AI limit reached for today.";
+          error instanceof Error ? error.message : "The model is rate-limited right now — try again shortly.";
       } else {
         toast.error("The desk stopped mid-task", {
           description: error instanceof Error ? error.message : String(error),

@@ -111,8 +111,8 @@ export async function POST(req: Request) {
         // An abort is the client leaving, not a fault worth reporting.
         if (!abort.signal.aborted) {
           const detail = error instanceof Error ? error.message : String(error);
-          // Both free tiers were exhausted at once — surface a calm, explanatory
-          // message instead of a raw 429 so a reviewer never hits a dead end.
+          // The model API is rate-limiting — surface a calm, explanatory message
+          // instead of a raw 429 so a reviewer never hits a dead end.
           const rateLimited =
             /429|quota|rate.?limit|resource_exhausted|too many requests|free-models-per-day/i.test(
               detail,
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
             type: "error",
             rateLimited,
             message: rateLimited
-              ? "The free AI tiers hit their daily request limit. The pipeline below is a complete, pre-screened example that shows the whole workflow — live screening resumes when the free quota resets (daily). No paid key required to review it."
+              ? "The model API is rate-limiting right now — too many requests in a short window. The pipeline below is a complete, pre-screened example that shows the whole workflow; live screening resumes in a moment, so please retry shortly."
               : detail,
           });
         }
