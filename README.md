@@ -183,6 +183,9 @@ Design intent and tone are documented in [`.impeccable.md`](.impeccable.md).
 
 ---
 
+## ⏱️ Time spent
+
+~30 hours.
 
 ---
 
