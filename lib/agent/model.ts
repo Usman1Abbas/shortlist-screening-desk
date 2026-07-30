@@ -10,9 +10,9 @@ import type { ChatResult, ChatGenerationChunk } from "@langchain/core/outputs";
 // harness needs (system prompt + tool schemas + résumé). Set AGENT_PROVIDER to
 // "openrouter" or "gemini" to fall back to one of those instead. Every call
 // passes through one shared throttle to stay under the per-minute request limit.
-// Default 1500ms spaces calls enough for Moonshot's per-minute limits on a normal
+// Default 800ms spaces calls enough for Moonshot's per-minute limits on a normal
 // tier; raise it via MODEL_MIN_INTERVAL_MS if the provider rate-limits.
-const MIN_INTERVAL_MS = Number(process.env.MODEL_MIN_INTERVAL_MS ?? 1500);
+const MIN_INTERVAL_MS = Number(process.env.MODEL_MIN_INTERVAL_MS ?? 800);
 
 let gate: Promise<void> = Promise.resolve();
 let lastStart = 0;
@@ -55,7 +55,7 @@ export class ThrottledChatOpenAI extends ChatOpenAI {
 // env vars without a code change (e.g. KIMI_BASE_URL for the .cn endpoint).
 function kimi() {
   return new ThrottledChatOpenAI({
-    model: process.env.KIMI_MODEL ?? "kimi-k2.6",
+    model: process.env.KIMI_MODEL ?? "kimi-k2.7-code-highspeed",
     apiKey: process.env.MOONSHOT_API_KEY,
     configuration: {
       baseURL: process.env.KIMI_BASE_URL ?? "https://api.moonshot.ai/v1",
